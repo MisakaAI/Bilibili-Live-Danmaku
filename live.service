@@ -1,0 +1,13 @@
+[Unit]
+Description=Bilibili Live Tools
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 {{PWD}} %i
+ExecStop=/bin/kill -s STOP $MAINPID
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
