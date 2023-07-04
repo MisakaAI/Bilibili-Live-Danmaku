@@ -1,0 +1,474 @@
+<!--
+    参考资料
+    https://github.com/simon300000/bilibili-live-ws
+    https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
+    https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/message_stream.md
+    https://zhuanlan.zhihu.com/p/37874066
+ -->
+<html>
+    <head>
+        <title>阿源の弹幕姬 ver 1.0 beta</title>
+        <!-- https://github.com/nodeca/pako/blob/master/dist/pako.js -->
+        <script type="text/javascript" src="pako.js"></script>
+        <!-- 声明 encode 和 decode 方法 -->
+        <script type="text/javascript" src="decode.js"></script>
+        <script>
+            const queryString = window.location.search
+            const params = new URLSearchParams(queryString)
+            // 房间 ID
+            const room_id = parseInt(params.get("roomid"))
+            console.log(room_id)
+            // UP主 UID
+            const uploader_uid = 4516259
+            // 弹幕消失时间 请设置 停留时间（秒）或者 false（不消失）
+            const hide_time = 10
+            // 礼物价值大于多少才会展示（单位：元）
+            // 1元 = 10电池 = 1000金瓜子
+            const gift_price = 0
+
+            // 生成 UUID
+            function UUID() {
+                return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+                    var r = (Math.random() * 16) | 0,
+                        v = c === "x" ? r : (r & 0x3) | 0x8
+                    return v.toString(16)
+                })
+            }
+
+            // 连接 WebSocket 并发送进入房间请求
+            // 这个数据包必须为连接以后的第一个数据包，5 秒内不发送进房数据包，服务器主动断开连接，任何数据格式错误将直接导致服务器主动断开连接。
+            // 如果使用的是控制台，下面两句一定要一起执行，否侧 onopen 不会被触发
+
+            // https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={roomid}
+            const ws = new WebSocket("wss://broadcastlv.chat.bilibili.com:2245/sub")
+            ws.onopen = function () {
+                ws.send(
+                    encode(
+                        JSON.stringify({
+                            roomid: room_id,
+                            protover: 2,
+                            // protover 协议版本
+                            //  - 1 (?)
+                            //  - 2 (压缩过的 Buffer，Body 内容需要用 zlib.inflate 解压出一个新的数据包，然后从数据包格式那一步重新操作一遍)
+                            //  - 3 (压缩信息,需要 brotli 解压,然后从数据包格式那一步重新操作一遍)
+                        }),
+                        7
+                    )
+                )
+            }
+
+            // 每隔 30 秒发送一次心跳，否则 60 秒后会被强制断开连接
+            setInterval(function () {
+                ws.send(encode("", 2))
+            }, 30000)
+
+            // 接收消息
+            ws.onmessage = async function (msgEvent) {
+                // 获取 消息容器
+                const msgContainer = document.getElementById("msg")
+                const topContainer = document.getElementById("msg_top")
+
+                const packet = await decode(msgEvent.data)
+                switch (packet.op) {
+                    case 8:
+                        console.log("加入房间")
+                        break
+                    case 3:
+                        // const count = packet.body.count
+                        // console.log(`人气：${count}`)
+                        break
+                    case 5:
+                        packet.body.forEach((body) => {
+                            switch (body.cmd) {
+                                // DANMU_MSG 弹幕内容
+                                case "DANMU_MSG":
+                                    // 控制台 输出弹幕内容
+                                    // console.log(`${body.info[2][1]}: ${body.info[1]}`)
+                                    // 创建 <p> 元素
+                                    const paragraph = document.createElement("p")
+                                    paragraph.id = UUID()
+                                    // 创建 <span> 元素用于 用户名
+                                    const userSpan = document.createElement("span")
+                                    // 设置 <p>标签 弹幕样式
+                                    paragraph.className = "message"
+                                    // 设置 用户名
+                                    userSpan.textContent = body.info[2][1]
+                                    // 设置 用户名颜色
+                                    if (body.info[2][0] == uploader_uid) {
+                                        // UP主
+                                        userSpan.className = "uploader"
+                                    } else if (body.info[2][2] == 1) {
+                                        // 房管
+                                        userSpan.className = "admin"
+                                    } else if (body.info[2][2] == 0) {
+                                        // 普通用户
+                                        userSpan.className = "user"
+                                    } else {
+                                        // 其他
+                                        userSpan.className = "other"
+                                    }
+                                    // 创建 <span> 元素用于 弹幕内容
+                                    const danmuSpan = document.createElement("span")
+                                    danmuSpan.textContent = body.info[1]
+                                    danmuSpan.className = "danmu"
+                                    // 将 <span> 元素添加到 <p> 元素中
+                                    paragraph.appendChild(userSpan)
+                                    paragraph.appendChild(document.createTextNode(": "))
+                                    paragraph.appendChild(danmuSpan)
+                                    // 将 <p> 元素添加到消息容器中
+                                    msgContainer.appendChild(paragraph)
+                                    // 将 <p> 元素插入到消息容器的最前面
+                                    // msgContainer.insertBefore(paragraph, msgContainer.firstChild)
+                                    // hide_time 秒后隐藏消息
+                                    if (hide_time) {
+                                        setTimeout(() => {
+                                            msgContainer.removeChild(
+                                                    document.getElementById(paragraph.id)
+                                                )
+                                        }, hide_time * 1000)
+                                    }
+                                    break
+                                // SUPER_CHAT_MESSAGE 醒目留言
+                                case "SUPER_CHAT_MESSAGE":
+                                    console.log(`${body.data.user_info.uname} ${body.data.message}`)
+
+                                    console.log(body.data)
+
+                                    const superchat = document.createElement("div")
+                                    superchat.id = UUID()
+                                    superchat.className = "sc"
+                                    superchat.style.border =
+                                        "solid 1px " + body.data.background_bottom_color
+
+                                    const sc_head = document.createElement("div")
+                                    sc_head.className = "title"
+                                    sc_head.style.backgroundColor = body.data.background_color
+
+                                    const sc_user = document.createElement("div")
+                                    sc_user.className = "sc_user"
+                                    sc_user.textContent = body.data.user_info.uname
+
+                                    const sc_price = document.createElement("div")
+                                    sc_price.className = "sc_price"
+                                    sc_price.textContent = "￥" + body.data.price
+                                    sc_price.style.color = body.data.background_bottom_color
+
+                                    const sc_body = document.createElement("div")
+                                    sc_body.className = "sc_msg"
+                                    sc_body.style.backgroundColor =
+                                        body.data.background_bottom_color
+
+                                    sc_body.textContent = body.data.message
+
+                                    sc_head.appendChild(sc_user)
+                                    sc_head.appendChild(sc_price)
+                                    superchat.appendChild(sc_head)
+                                    superchat.appendChild(sc_body)
+                                    topContainer.appendChild(superchat)
+                                    topContainer.insertBefore(superchat, topContainer.firstChild)
+
+                                    if (hide_time) {
+                                        setTimeout(() => {
+                                            topContainer.removeChild(
+                                                    document.getElementById(superchat.id)
+                                                )
+                                        }, body.data.time * 1000)
+                                    }
+
+                                    break
+                                // GUARD_BUY 大航海
+                                case "GUARD_BUY":
+                                    console.log(body.data)
+
+                                    const guard = document.createElement("div")
+                                    guard.id = UUID()
+                                    guard.className =
+                                        "guard guard_background_" + body.data.guard_level
+
+                                    const guard_p = document.createElement("p")
+
+                                    const guard_user = document.createElement("span")
+                                    guard_user.className = "user"
+                                    guard_user.textContent = body.data.username
+
+                                    const guard_level = document.createElement("span")
+                                    guard_level.className = "guard_level_" + body.data.guard_level
+                                    guard_level.textContent = body.data.gift_name
+
+                                    const guard_img = document.createElement("img")
+                                    guard_img.src = "guard_" + body.data.guard_level + ".png"
+
+                                    guard_p.appendChild(document.createTextNode("感谢 "))
+                                    guard_p.appendChild(guard_user)
+                                    guard_p.appendChild(document.createTextNode(" 开通的 "))
+                                    guard_p.appendChild(guard_level)
+                                    guard_p.appendChild(guard_img)
+
+                                    guard.appendChild(guard_p)
+                                    topContainer.appendChild(guard)
+                                    topContainer.insertBefore(guard, topContainer.firstChild)
+
+                                    if (hide_time) {
+                                        setTimeout(() => {
+                                            topContainer.removeChild(
+                                                    document.getElementById(guard.id)
+                                                )
+                                        }, hide_time * 1000 * 5)
+                                    }
+
+                                    break
+                                // SEND_GIFT 赠送礼物
+                                case "SEND_GIFT":
+                                    // 控制台 输出弹幕内容
+                                    // console.log(
+                                    //     `${body.data.uname} ${body.data.action} ${body.data.num} 个 ${body.data.giftName}`
+                                    // )
+
+                                    function create_gift() {
+                                        // 创建 <p> 元素
+                                        const paragraph_gift = document.createElement("p")
+                                        paragraph_gift.id = UUID()
+                                        // 创建 <span> 元素用于 用户名
+                                        const userSpan_gift = document.createElement("span")
+                                        // 设置 <p>标签 弹幕样式
+                                        paragraph_gift.className = "message"
+                                        // 设置 用户名
+                                        userSpan_gift.textContent = body.data.uname
+                                        userSpan_gift.className = "user"
+                                        // 创建 <span> 元素用于 礼物
+                                        const giftSpan = document.createElement("span")
+                                        giftSpan.textContent = body.data.giftName
+                                        giftSpan.className = "gift"
+                                        // 将 <span> 元素添加到 <p> 元素中
+                                        paragraph_gift.appendChild(document.createTextNode("感谢 "))
+                                        paragraph_gift.appendChild(userSpan_gift)
+                                        paragraph_gift.appendChild(
+                                            document.createTextNode(
+                                                " " +
+                                                    body.data.action +
+                                                    "的 " +
+                                                    body.data.num +
+                                                    " 个 "
+                                            )
+                                        )
+                                        paragraph_gift.appendChild(giftSpan)
+                                        paragraph_gift.appendChild(document.createTextNode(" ！"))
+                                        // 显示礼物价格
+                                        const giftPrice = document.createElement("span")
+                                        giftPrice.textContent = "(￥" + body.data.price / 1000 + ")"
+                                        giftPrice.className = "gift_price"
+                                        paragraph_gift.appendChild(giftPrice)
+                                        // 将 <p> 元素添加到消息容器中
+                                        msgContainer.appendChild(paragraph_gift)
+                                        // hide_time 秒后隐藏消息
+                                        if (hide_time) {
+                                            setTimeout(() => {
+                                                msgContainer.removeChild(
+                                                    document.getElementById(paragraph_gift.id)
+                                                )
+                                            }, hide_time * 1000)
+                                        }
+                                    }
+                                    // 仅展示付费礼物，且礼物价值大于 gift_price
+                                    if (body.data.coin_type == "gold") {
+                                        // console.log("金瓜子")
+                                        if (body.data.price / 1000 > gift_price) {
+                                            // console.log(body.data.price)
+                                            create_gift()
+                                        } /* else {
+                                            console.log(body.data.price)
+                                        }
+                                    } else if (body.data.coin_type == "silver") {
+                                        console.log("银瓜子礼物")
+                                    } else {
+                                        console.log(body.data)*/
+                                    }
+                                    break
+                                case "WELCOME":
+                                    console.log(`欢迎 ${body.data.uname}`)
+                                    break
+                                // 此处省略很多其他通知类型
+                                // default:
+                                //     console.log(body)
+                            }
+                        })
+                        break
+                    default:
+                        console.log(packet)
+                }
+            }
+        </script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                position: relative;
+            }
+
+            #msg_top {
+                font-family: "975 圆体";
+                font-weight: bold;
+                font-size: 1.3em;
+                color: rgba(255, 255, 255, 1);
+                width: 25em;
+                padding: 1em;
+                z-index: 999;
+            }
+
+            #msg {
+                font-family: "975 圆体";
+                font-weight: bold;
+                font-size: 1.3em;
+
+                color: rgba(255, 255, 255, 1);
+                /* 背景颜色 */
+                /* background-color: rgba(0, 0, 0, 0.3); */
+                /* 背景模糊 */
+                /* backdrop-filter: blur(10px); */
+                /* 弹幕区域宽度 */
+                width: 25em;
+
+                position: absolute;
+                bottom: 0;
+                left: 0;
+
+                padding: 1em;
+            }
+            #msg p {
+                margin: 0 auto;
+                padding: 0;
+            }
+            .message {
+                /* 字体描边 */
+                text-shadow: -2px -2px #000, -2px -1px #000, -2px 0 #000, -2px 1px #000,
+                    -2px 2px #000, -1px -2px #000, -1px -1px #000, -1px 0 #000, -1px 1px #000,
+                    -1px 2px #000, 0 -2px #000, 0 -1px #000, 0 0 #000, 0 1px #000, 0 2px #000,
+                    1px -2px #000, 1px -1px #000, 1px 0 #000, 1px 1px #000, 1px 2px #000,
+                    2px -2px #000, 2px -1px #000, 2px 0 #000, 2px 1px #000, 2px 2px #000;
+            }
+            .uploader {
+                color: #c1272d;
+            }
+            .admin {
+                color: #198d44;
+            }
+            .user {
+                color: #f0b800;
+            }
+            .other {
+                color: #006fe6;
+            }
+            .gift {
+                color: #c1272d;
+            }
+            .gift_price {
+                font-size: 0.7em;
+                font-weight: normal;
+            }
+            .danmu {
+                margin-left: 0.5em;
+            }
+            .sc {
+                margin: 10px 0 10px 0;
+                box-shadow: 0 0 5px #000;
+                border-radius: 10px;
+                overflow: hidden;
+                font-weight: normal;
+            }
+
+            .title {
+                padding: 10px 20px 10px 20px;
+                display: flex;
+                display: -webkit-flex;
+                flex-flow: row nowrap;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+
+            .sc_user {
+                font-family: "思源黑体";
+                font-weight: bold;
+                color: #333;
+            }
+
+            .sc_price {
+                font-size: 0.8em;
+                text-shadow: none;
+            }
+            .sc_msg {
+                padding: 10px 20px 10px 20px;
+            }
+
+            .guard {
+                position: relative;
+                padding: 10px 20px 10px 90px;
+                margin: 20px 0 20px 0;
+                box-shadow: 0 0 5px #000;
+                border-radius: 10px;
+                font-weight: normal;
+            }
+
+            .guard img {
+                position: absolute;
+                width: 80px;
+                top: -18px;
+                left: 0;
+            }
+
+            .guard_background_3 {
+                border: solid 1px #3e3a88;
+                background-color: #5786fe;
+            }
+            .guard_level_3 {
+                color: #3e3a88;
+            }
+            .guard_background_2 {
+                border: solid 1px #311567;
+                background-color: #8352f1;
+            }
+            .guard_level_2 {
+                color: #311567;
+            }
+            .guard_background_1 {
+                border: solid 1px #731c1f;
+                background-color: #eb4f51;
+            }
+            .guard_level_1 {
+                color: #731c1f;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="msg_top"></div>
+        <div id="msg"></div>
+    </body>
+    <script>
+        /* 在 msg 为空时隐藏 */
+
+        // 选择需要观察变动的节点
+        const targetNode = document.querySelector("#msg")
+        targetNode.style.display = targetNode.childNodes.length === 0 ? "none" : ""
+
+        // 创建一个观察器实例并传入回调函数
+        const observer = new MutationObserver((mutationsList, observer) => {
+            const isEmpty = targetNode.childNodes.length === 0
+            targetNode.style.display = isEmpty ? "none" : ""
+
+            /* 节点大于30个时，仅保留最后30个。 */
+            if (targetNode.childNodes.length >= 30) {
+                while (targetNode.childNodes.length > 30) {
+                    targetNode.removeChild(targetNode.firstChild)
+                }
+            }
+        })
+
+        // 观察器的配置（需要观察什么变动）
+        //  - attributes 目标节点的属性变化
+        //  - childList 目标节点的子节点的增加或删除
+        //  - subtree 目标节点的所有后代节点
+        const config = { attributes: false, childList: true, subtree: false }
+
+        // 以上述配置开始观察目标节点
+        observer.observe(targetNode, config)
+    </script>
+</html>
