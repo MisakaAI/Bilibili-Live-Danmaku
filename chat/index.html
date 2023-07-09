@@ -13,15 +13,30 @@
         <!-- 声明 encode 和 decode 方法 -->
         <script type="text/javascript" src="decode.js"></script>
         <script>
+            // 获取 GET 参数
             const queryString = window.location.search
             const params = new URLSearchParams(queryString)
+
             // 房间 ID
-            const room_id = parseInt(params.get("roomid"))
-            console.log(room_id)
+            if (params.get("roomid") == null) {
+                var room_id = 3472667
+            } else {
+                var room_id = parseInt(params.get("roomid"))
+            }
+            console.log("直播间：" + room_id)
+
             // UP主 UID
             const uploader_uid = 4516259
             // 弹幕消失时间 请设置 停留时间（秒）或者 false（不消失）
-            const hide_time = 10
+            // const hide_time = 10
+            if (params.get("ht") == null || params.get("ht") == 0) {
+                console.log("弹幕消失时间：不消失")
+                var hide_time = false
+            } else {
+                var hide_time = parseInt(params.get("ht"))
+                console.log("弹幕消失时间：" + hide_time + "秒")
+            }
+
             // 礼物价值大于多少才会展示（单位：元）
             // 1元 = 10电池 = 1000金瓜子
             const gift_price = 0
@@ -130,9 +145,9 @@
                                     break
                                 // SUPER_CHAT_MESSAGE 醒目留言
                                 case "SUPER_CHAT_MESSAGE":
-                                    console.log(`${body.data.user_info.uname} ${body.data.message}`)
-
-                                    console.log(body.data)
+                                    // 控制台 输出弹幕内容
+                                    // console.log(`${body.data.user_info.uname} ${body.data.message}`)
+                                    // console.log(body.data)
 
                                     const superchat = document.createElement("div")
                                     superchat.id = UUID()
@@ -178,7 +193,8 @@
                                     break
                                 // GUARD_BUY 大航海
                                 case "GUARD_BUY":
-                                    console.log(body.data)
+                                    // 控制台 输出弹幕内容
+                                    // console.log(body.data)
 
                                     const guard = document.createElement("div")
                                     guard.id = UUID()
@@ -284,9 +300,9 @@
                                         console.log(body.data)*/
                                     }
                                     break
-                                case "WELCOME":
-                                    console.log(`欢迎 ${body.data.uname}`)
-                                    break
+                                // case "WELCOME":
+                                //     console.log(`欢迎 ${body.data.uname}`)
+                                //     break
                                 // 此处省略很多其他通知类型
                                 // default:
                                 //     console.log(body)
@@ -304,21 +320,25 @@
                 padding: 0;
                 position: relative;
             }
-
+            p {
+                margin: 0 auto;
+                padding: 0;
+            }
             #msg_top {
+                font-size: 1.3em;
                 font-family: "975 圆体";
                 font-weight: bold;
-                font-size: 1.3em;
                 color: rgba(255, 255, 255, 1);
                 width: 25em;
                 padding: 1em;
+                position: fixed;
                 z-index: 999;
             }
 
             #msg {
+                font-size: 1.3em;
                 font-family: "975 圆体";
                 font-weight: bold;
-                font-size: 1.3em;
 
                 color: rgba(255, 255, 255, 1);
                 /* 背景颜色 */
@@ -333,10 +353,6 @@
                 left: 0;
 
                 padding: 1em;
-            }
-            #msg p {
-                margin: 0 auto;
-                padding: 0;
             }
             .message {
                 /* 字体描边 */
