@@ -4,7 +4,7 @@ import subprocess
 # from send_mail import send_mail
 
 # 要监测的服务名
-service_list = ["live@3472667.service","live@90049.service"]
+service_list = ["live@3472667.service"]
 
 def check_systemd(service_name):
     try:

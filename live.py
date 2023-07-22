@@ -5,6 +5,30 @@ import time
 import psycopg
 from bilibili_api import live
 
+# 使用登录账号爬取弹幕
+# 需要使用 `login.py` 登录
+
+# import pickle
+# from pathlib import Path
+# from bilibili_api import Credential, sync, Danmaku
+
+# file_path = Path.cwd() / "credential"
+# credential = Credential()
+# if file_path.exists():
+#     with open('credential','rb') as f:
+#         credential_data = pickle.load(f)
+#     credential = Credential(sessdata=credential_data.sessdata,bili_jct=credential_data.bili_jct,buvid3=credential_data.buvid3,dedeuserid=credential_data.dedeuserid,ac_time_value=credential_data.ac_time_value)
+#     # 检查 Credential 是否需要刷新
+#     if sync(credential.chcek_refresh()):
+#         # 刷新 Credential
+#         sync(credential.refresh())
+# credential =  Credential(sessdata="3b12a453%2C1703936013%2Cd2f1c%2A72l9AzxDNmpFePgRJF7ZaAJ0UpcyNnpt5goqblVbG2LnQj5CzblWpjuTrrUEN41Dw0EYjPCQAANAA",bili_jct="196215dbc03904544c9f55054fdba35b")
+# room = live.LiveDanmaku(room_id,credential=credential)
+
+# 发送弹幕 - 用于测试登录状态
+# sender = live.LiveRoom(room_id, credential=credential)
+# await sender.send_danmaku(Danmaku("弹幕发送成功"))
+
 room_id = sys.argv[1]
 room = live.LiveDanmaku(room_id)
 
@@ -77,7 +101,6 @@ async def on_gift(event):
             raw_data=json.dumps(event, ensure_ascii=False)
         )
         await exec_sql(sql)
-
 
 # 醒目留言
 @room.on('SUPER_CHAT_MESSAGE')

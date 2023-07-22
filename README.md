@@ -52,13 +52,34 @@ systemctl start live@3472667.service
 systemctl enable live@3472667.service
 ```
 
-程序一直运行有时候会出问题，可以定时重启一下。  
-`check_systemd.py` 可以检查程序运行是否正常，如果不正常就重启。  
-可以通过 `corntab` 的方式设置为定时执行。
+程序一直运行有时候会出问题，必要时可以定时重启一下。  
+也可以通过 `check_systemd.py` 检查程序运行是否正常，如果不正常就重启。  
+使用 `corntab` 设置为定时执行。
 
 ```crontab
+# 每小时的0分钟（整点）时执行
 0 * * * * /root/check_systemd.py
+# 在每天的凌晨4点执行
 0 4 * * * systemctl restart live@3472667.service
+```
+
+## Docker
+
+程序也支持以 `Docker` 的方式运行。
+
+- [Dockerfile](Dockerfile)
+
+### 使用方法
+
+```bash
+# 构建镜像
+docker build -t danmaku .
+
+# 运行
+docker run -d --restart=always --name live_3472667 --net="host" danmaku 3472667
+
+# 使用登录账号运行程序
+# docker run -d --restart=always --name live_90049 --net="host" -v <PATH>/credential:/usr/src/app/credential live_danmaku 90049
 ```
 
 ## 其他

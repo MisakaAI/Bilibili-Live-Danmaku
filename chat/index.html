@@ -470,9 +470,9 @@
             const isEmpty = targetNode.childNodes.length === 0
             targetNode.style.display = isEmpty ? "none" : ""
 
-            /* 节点大于30个时，仅保留最后30个。 */
-            if (targetNode.childNodes.length >= 30) {
-                while (targetNode.childNodes.length > 30) {
+            /* 节点大于20个时，仅保留最后20个。 */
+            if (targetNode.childNodes.length >= 20) {
+                while (targetNode.childNodes.length > 20) {
                     targetNode.removeChild(targetNode.firstChild)
                 }
             }
