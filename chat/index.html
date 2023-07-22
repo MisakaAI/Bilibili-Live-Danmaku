@@ -1,13 +1,17 @@
-<!--
+ <!DOCTYPE html>
+ <!--
     参考资料
     https://github.com/simon300000/bilibili-live-ws
     https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
     https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/message_stream.md
     https://zhuanlan.zhihu.com/p/37874066
  -->
-<html>
+ <html lang="zh-cmn-Hans">
     <head>
-        <title>阿源の弹幕姬 ver 1.0 beta</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge,chrome=1">
+        <title>阿源の弹幕姬 Ver 1.1 beta</title>
         <!-- https://github.com/nodeca/pako/blob/master/dist/pako.js -->
         <script type="text/javascript" src="pako.js"></script>
         <!-- 声明 encode 和 decode 方法 -->
@@ -315,10 +319,16 @@
             }
         </script>
         <style>
+            html {
+                width: 100%;
+                height: 100%;
+            }
             body {
                 margin: 0;
                 padding: 0;
                 position: relative;
+                width: 100%;
+                height: 100%;
             }
             p {
                 margin: 0 auto;
@@ -329,7 +339,6 @@
                 font-family: "975 圆体";
                 font-weight: bold;
                 color: rgba(255, 255, 255, 1);
-                width: 25em;
                 padding: 1em;
                 position: fixed;
                 z-index: 999;
@@ -346,7 +355,6 @@
                 /* 背景模糊 */
                 /* backdrop-filter: blur(10px); */
                 /* 弹幕区域宽度 */
-                width: 25em;
 
                 position: absolute;
                 bottom: 0;
@@ -355,6 +363,7 @@
                 padding: 1em;
             }
             .message {
+                margin-top: 5px;
                 /* 字体描边 */
                 text-shadow: -2px -2px #000, -2px -1px #000, -2px 0 #000, -2px 1px #000,
                     -2px 2px #000, -1px -2px #000, -1px -1px #000, -1px 0 #000, -1px 1px #000,
@@ -463,6 +472,7 @@
 
         // 选择需要观察变动的节点
         const targetNode = document.querySelector("#msg")
+
         targetNode.style.display = targetNode.childNodes.length === 0 ? "none" : ""
 
         // 创建一个观察器实例并传入回调函数
